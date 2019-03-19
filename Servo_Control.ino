@@ -18,14 +18,15 @@ void setup() {
   pinMode(Apin, OUTPUT);
   pinMode(Bpin, OUTPUT);
   pinMode(Rpin, INPUT);
+  pinMode(R2pin, INPUT);
   Serial.begin(9600);
 }
 
 void loop() {
   int motorDegrees = tickCount * 360 / 4;
-  int theta = tickCount * 4 / 75;
+  int theta = motorDegrees / 75;
   int theta_d = 0;
-  bool go = true;
+  bool go = false;
   float input = 0.0;
   int speedCount = 0;
   int firstTime = 0;
@@ -33,6 +34,7 @@ void loop() {
   int tickTime = 0;
   int motorSpeed = 0;
   bool start = false;
+  bool tick = digitalRead(Rpin);
 
   //while(Serial.available() == false);
 
@@ -44,22 +46,31 @@ void loop() {
       Serial.println(input);
       
       theta_d = input;
+
+      if(theta_d > 720.0) 
+      {
+        theta_d = 720.0;
+      }
+      else if(theta_d < -720.0;)
+      {
+        theta_d = -720.0;
+      }
+      
       go = true;
       
     }
 
     if (go) {
-      prop = input;
-      setVelos(input);
+      //prop = input;
+      proportionalControl(theta,theta_d);
       go = false;
-    }
-    
+    }    
 
     bool A = digitalRead(Rpin);
   
-    if(tick != temp)
+    if(tick != A)
     {
-      tick = temp;
+      tick = A;
       //Serial.println(tickCount);
     }
     else
@@ -79,7 +90,7 @@ void loop() {
     }
     
     motorDegrees = tickCount * 360 / 4; //Get degrees for the motor
-    theta = motorRevolutions / 75; //Get degrees for the output shaft
+    theta = motorDegrees / 75; //Get degrees for the output shaft
     
     proportionalControl(theta,theta_d);
     
@@ -107,14 +118,15 @@ float readFloat() {
 }
 
 int setSpeed(float S) {
-  if (S > 230.0) {
-    S = 255.0;
+  if (S >= 1.0) {
+    S = 1.0;
   }
-  else if (S < 0.3*255.0) {
-    S = 0.3*255.0;    
+  else if (S <= 0.3 & S > 0) {
+    S = 0.3;    
   }
+  else { S = 0.0; }
 
-  int out = (int)(S);
+  int out = (int)((S)*255.0);
 
   return out;
 }
@@ -128,23 +140,23 @@ void setVelos(float V) {
   
   unsigned Si = setSpeed(S);
 
-  bool A = LOW;
-  bool B = HIGH;
+  bool X = LOW;
+  bool Y = HIGH;
 
   //Get Direction
   if (V > 0) {
-    A = HIGH;
-    B = LOW;
+    X = HIGH;
+    Y = LOW;
   }
   else {
-    A = LOW;
-    B = HIGH;
+    X = LOW;
+    Y = HIGH;
   }
 
   //Serial.println(A);
 
   //Set Direction
-  if (HIGH == A) {
+  if (HIGH == X) {
     analogWrite(Bpin, 0);
     analogWrite(Apin, Si);
     //Serial.println(Si);
@@ -175,9 +187,21 @@ void proportionalControl(float theta, float theta_d) {
   }
   
   float out = kp*e;
-  prop = prop + 0.5*(theta_d-theta+2);
   
-  setVelos(prop);
+  if(out > 360.0)
+  {
+    out = 360.0;
+  }
+  else if(out < -360.0)
+  {
+    out = -360.0;
+  }
+
+  out = out/360.0;
+  
+  //prop = prop + 0.5*(theta_d-theta+2);
+  
+  setVelos(out);
   //Serial.println(theta);
   //int tock = micros();
   //int Tc_1 = Tc - (tock - tic);
