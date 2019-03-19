@@ -4,12 +4,7 @@ int Apin = 5;
 int Bpin = 9;
 int Rpin = 13;
 int R2pin = 12;
-int Cpin = 10;
-bool tick = 0;
 int tickCount = 0;
-float prop = 0.0;
-int times[] = {0,0,0,0,0,0,0,0,0,0,0,0};
-int timesIndex = 0;
 
 //char[100] BUF;
 //int ind = 0;
@@ -28,11 +23,6 @@ void loop() {
   int theta_d = 0;
   bool go = false;
   float input = 0.0;
-  int speedCount = 0;
-  int firstTime = 0;
-  int lastTime = 0; 
-  int tickTime = 0;
-  int motorSpeed = 0;
   bool start = false;
   bool tick = digitalRead(Rpin);
 
@@ -51,7 +41,7 @@ void loop() {
       {
         theta_d = 720.0;
       }
-      else if(theta_d < -720.0;)
+      else if(theta_d < -720.0)
       {
         theta_d = -720.0;
       }
@@ -61,7 +51,6 @@ void loop() {
     }
 
     if (go) {
-      //prop = input;
       proportionalControl(theta,theta_d);
       go = false;
     }    
@@ -105,8 +94,14 @@ float readFloat() {
 
   //Serial.println(c);
 
-  return c.toFloat();
+  if(c.indexOf("R") > -1) //.strcmp if char array
+  {
+    theta = 0.0;
+    return 0.0;
+  }
 
+  return c.toFloat();
+  //while(Serial.available()){
   //convert from ascii ?
   //if('\n' == a) {
   //BUFF[ind] = '/0';
@@ -115,6 +110,7 @@ float readFloat() {
 
   //BUFF[ind] = c;
   //ind += 1;
+  //}
 }
 
 int setSpeed(float S) {
@@ -160,7 +156,6 @@ void setVelos(float V) {
     analogWrite(Bpin, 0);
     analogWrite(Apin, Si);
     //Serial.println(Si);
-    //analogWrite(Cpin, S);
   }
   else {
     //Serial.println("reverse");
@@ -176,7 +171,6 @@ void proportionalControl(float theta, float theta_d) {
   //int tic = micros();
   float kp = 0.5;
   float e = theta_d - theta;
-  //motorSpeed = 1000*1000*1.2/(tickTime); degrees/second
 
   if(tickCount % 4 == 0)
   {
@@ -187,6 +181,8 @@ void proportionalControl(float theta, float theta_d) {
   }
   
   float out = kp*e;
+
+  //Potentially give it buffer if it has trouble settling
   
   if(out > 360.0)
   {
