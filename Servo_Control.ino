@@ -3,8 +3,9 @@
 int Apin = 5;
 int Bpin = 9;
 int Rpin = 13;
-int R2pin = 12;
+int R2pin = 11;
 int tickCount = 0;
+int theta = 0.0;
 
 //char[100] BUF;
 //int ind = 0;
@@ -19,7 +20,7 @@ void setup() {
 
 void loop() {
   int motorDegrees = tickCount * 360 / 4;
-  int theta = motorDegrees / 75;
+  theta = motorDegrees / 75;
   int theta_d = 0;
   bool go = false;
   float input = 0.0;
@@ -32,8 +33,6 @@ void loop() {
 
     if(Serial.available()) { //change to while(serial.available()) and read chars to speed up
       input = readFloat();
-
-      Serial.println(input);
       
       theta_d = input;
 
@@ -45,6 +44,11 @@ void loop() {
       {
         theta_d = -720.0;
       }
+
+      Serial.print("Input Position : ");
+      Serial.println(theta);
+      Serial.print("Desired Position : ");
+      Serial.println(theta_d);
       
       go = true;
       
@@ -69,7 +73,7 @@ void loop() {
     
     bool B = digitalRead(R2pin);
 
-    if(B != A) //clockwise
+    if(B == A) //clockwise
     {
       tickCount = tickCount + 1;
     }
@@ -78,7 +82,7 @@ void loop() {
       tickCount = tickCount - 1;
     }
     
-    motorDegrees = tickCount * 360 / 4; //Get degrees for the motor
+    motorDegrees = tickCount * 360 / 6; //Get degrees for the motor
     theta = motorDegrees / 75; //Get degrees for the output shaft
     
     proportionalControl(theta,theta_d);
@@ -97,10 +101,12 @@ float readFloat() {
   if(c.indexOf("R") > -1) //.strcmp if char array
   {
     theta = 0.0;
+    tickCount = 0;
     return 0.0;
   }
 
   return c.toFloat();
+  
   //while(Serial.available()){
   //convert from ascii ?
   //if('\n' == a) {
@@ -113,14 +119,15 @@ float readFloat() {
   //}
 }
 
+// input is percentage of pwm. 30% is minimum to turn motor with this setup
 int setSpeed(float S) {
-  if (S >= 1.0) {
+
+  if (S > 1.0) {
     S = 1.0;
   }
-  else if (S <= 0.3 & S > 0) {
-    S = 0.3;    
+  else if (S < 0.35 & S > 0) {
+    S = 0.35;    
   }
-  else { S = 0.0; }
 
   int out = (int)((S)*255.0);
 
@@ -169,31 +176,31 @@ void setVelos(float V) {
 void proportionalControl(float theta, float theta_d) {
   int Tc = 5;
   //int tic = micros();
-  float kp = 0.5;
+  float kp = 0.4;
   float e = theta_d - theta;
+  
+  float out = kp*e;
 
-  if(tickCount % 4 == 0)
+  //Potentially give it buffer if it has trouble settling
+  
+  if(out > 50.0)
+  {
+    out = 50.0;
+  }
+  else if(out < -50.0)
+  {
+    out = -50.0;
+  }
+
+  out = out/50.0;
+
+  if(tickCount % 6 == 0)
   {
     Serial.print("Current Position : ");
     Serial.println(theta);
     Serial.print("Desired Position : ");
     Serial.println(theta_d);
   }
-  
-  float out = kp*e;
-
-  //Potentially give it buffer if it has trouble settling
-  
-  if(out > 360.0)
-  {
-    out = 360.0;
-  }
-  else if(out < -360.0)
-  {
-    out = -360.0;
-  }
-
-  out = out/360.0;
   
   //prop = prop + 0.5*(theta_d-theta+2);
   
