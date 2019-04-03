@@ -27,4 +27,10 @@ thetaY = rad2deg(atan2(T03(3,2),T03(3,3)))
 
 thetaZ = rad2deg(atan2(T03(2,1),T03(1,1)))
 
-Rotation = [cosd(thetaZ)*cosd(thetaX) - sind(thetaZ)*cosd(thetaY)*sind(thetaX), -sind(thetaZ)*cosd(thetaX) - cosd(thetaZ)*cosd(thetaY)*sind(thetaX), sind(thetaY)*sind(thetaX); cosd(thetaZ)*sind(thetaX) + sind(thetaZ)*cosd(thetaY)*cosd(thetaX), -sind(thetaZ)*sind(thetaX) + cosd(thetaZ)*cosd(thetaY)*cosd(thetaX), -sind(thetaY)*cosd(thetaX); sind(thetaZ)*sind(thetaY), cosd(thetaZ)*sind(thetaY), cosd(thetaY)]
+Rx = [1,0,0;0,cosd(thetaX),-sind(thetaX);0,sind(thetaX),cosd(thetaX)]
+
+Ry = [cosd(thetaY), 0, sind(thetaY); 0, 1, 0; -sind(thetaY), 0, cosd(thetaY)]
+    
+Rz = [cosd(thetaZ), -sind(thetaZ), 0; sind(thetaZ), cosd(thetaZ), 0; 0, 0, 1]
+
+Rotation = Rx*Ry*Rz
