@@ -21,9 +21,9 @@ T2 = [cos(theta1) -sin(theta1) 0 0; sin(theta1) cos(theta1) 0 0; 0 0 1 0; 0 0 0 
 T3 = [cos(theta2) -sin(theta2) 0 0; sin(theta2) cos(theta2) 0 0; 0 0 1 0; 0 0 0 1] * [1 0 0 L2; 0 1 0 0; 0 0 1 0; 0 0 0 1];
 T03 = T01*T2*T3
 
-thetaX = atan2(T03(1,3),-T03(2,3))
+thetaX = rad2deg(atan2(T03(1,3),-T03(2,3)))
 
-thetaY = atan2(-T03(3,1),cosd(thetaZ)*T03(1,1) + sind(thetaZ)*T03(2,1))
+thetaY = rad2deg(atan2(T03(3,2),T03(3,3)))
 
 thetaZ = rad2deg(atan2(T03(2,1),T03(1,1)))
 
