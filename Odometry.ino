@@ -46,6 +46,7 @@ void loop() {
 }
 
 // isr when right wheel sensor detects encoder tick
+// estimates change in position and add changes to global variables
 void Right() {
   dx = L/2 * sin(phi);
   dy = (L*cos(phi))/2;
@@ -56,6 +57,7 @@ void Right() {
 }
 
 // isr when left wheel sensor detects encoder tick
+// estimates change in position and add changes to global variables
 void Left() {
   dx = L/2 * sin(phi);
   dy = (L*cos(phi))/2;
