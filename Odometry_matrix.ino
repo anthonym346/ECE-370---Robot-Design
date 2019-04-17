@@ -4,7 +4,14 @@
 #define r 2
 #define L 3
 
-double x, y, th, dx, dy, dth, Pt, dphi, phi;
+double x, y, dx, dy, dth, phi;
+
+//2 tick encoder, 80:1 encoder:wheel  
+double th = 2*PI/(2*80); //radians per tick
+
+double Pt = r*th; //distance per tick
+
+double dphi = atan2(Pt,L); //angle turned per tick
 
 //Transition matrix at start
 double TP[][4] = {{cos(0), -sin(0), 0, 0}, {sin(0), cos(0), 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
@@ -36,8 +43,8 @@ void setup() {
   dphi = atan2(Pt,L); //angle turned per tick
 
   // To multiply distance Pt into right and left arrays
-  double tempR[][4] = {{1, 0, 0, Pt}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
-  double tempL[][4] = {{1, 0, 0, Pt}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
+  double tempR[][4] = {{1, 0, 0, Pt/2}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
+  double tempL[][4] = {{1, 0, 0, Pt/2}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
 
   double tempTR[4][4];
   
@@ -55,12 +62,13 @@ void setup() {
 void loop() {
   // print position and angle
 
-  Serial.print("X: ");
-  Serial.println(TP[0][3]);
-  Serial.print("Y: ");
-  Serial.println(TP[1][3]);
-  Serial.print("Angle: ");
-  Serial.println(atan2(TP[2][1],TP[1][1]));
+  Serial.print("Position : (");
+  Serial.print(TP[0][3]);
+  Serial.print(",");
+  Serial.print(TP[1][3]);
+  Serial.print(",");
+  Serial.print(atan2(TP[1][0],TP[0][0]));
+  Serial.println(")");
 
 }
 
@@ -84,7 +92,7 @@ void Left() {
 }
 
 // matrix product
-void multiply(double mat1[][4], double mat2[][4], double res[][4]) 
+void multiply(double m[][4], double n[][4], double res[][4]) 
 { 
     int i, j, k; 
     
@@ -94,7 +102,7 @@ void multiply(double mat1[][4], double mat2[][4], double res[][4])
         { 
             res[i][j] = 0; 
             for (k = 0; k < 4; k++) 
-                res[i][j] += mat1[i][k]*mat2[k][j]; 
+                res[i][j] += m[i][k]*n[k][j]; 
         } 
     } 
 } 
