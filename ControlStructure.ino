@@ -7,7 +7,16 @@
 #define r 2
 #define L 3
 
+//Placeholder thresholds
+#define ThreshX 10
+#define ThreshY 10
+#define ThreshZ 10
+
+#define m_reset 0
+
 double x, y, dx, dy, dth, phi;
+
+double ax, ay, az, theta_x, theta_y, theta_z;
 
 //2 tick encoder, 80:1 encoder:wheel  
 double th = 2*PI/(2*80); //radians per tick
@@ -26,6 +35,7 @@ double TR[][4] = {{cos(dphi), -sin(dphi), 0, 0}, {sin(dphi), cos(dphi), 0, 0}, {
 double TL[][4] = {{cos(-dphi), -sin(-dphi), 0, 0}, {sin(-dphi), cos(-dphi), 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
 
 int Ml, Mr;
+bool picked_up = false;
 
 int IR1 = 13;
 int IR2 = 15;
@@ -60,26 +70,25 @@ void setup() {
 
   setIR(In);
 
-  setOdomMatrices();
-
   MotorSetup();
 
   IMUSetup(2);
 }
 
 void loop() {
-  int V, theta;
+  int vel_d, theta_d, S, proportional;
+  proportional = 0;
   
-  // put your main code here, to run repeatedly:
   checkIMU();
 
   a = checkUDP(); --no blocking
 
    theta_d = a.theta;
-   vel_d = a.vel
-  (V,theta) = parseInput(a);
+   vel_d = a.velos;
 
-  setSpeed(V);
+  //proportional = proportionalControl(vel, vel_d); //add proportional control later
+  
+  S = setSpeed(proportional);
 
   setDir(theta);
 
@@ -92,6 +101,12 @@ void loop() {
   setMot(Ml,Mr);
 }
 
+void setMot(int Ml, int Mr)
+{
+  analogWrite(motorPin1, Ml);
+  analogWrite(motorPin2, Mr);
+}
+
 void SetIR(In)
 {
   pinmode(IR1,INPUT_PULLUP);
@@ -101,8 +116,27 @@ void SetIR(In)
   attachInterrupt(digitalPinToInterrupt(IR2),Left,RISING);
 }
 
-void setOdomMatrices()
+
+void MotorSetup()
 {
+  pinmode(motorPin1,OUTPUT);
+  pinmode(motorPin2,OUTPUT);
+
+  Vel = 0;
+
+  //set_P_Dir(); //add later
+}
+
+void InitStruct() 
+{
+
+
+  //Motor //add later
+
+  //UDPInput(Buffer); //add later
+  
+  //Odom
+  
   // To multiply distance Pt into right and left arrays
   double tempR[][4] = {{1, 0, 0, Pt/2}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
   double tempL[][4] = {{1, 0, 0, Pt/2}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
@@ -120,24 +154,9 @@ void setOdomMatrices()
   multiply(tempTL,tempL,TL);
 }
 
-void MotorSetup()
+void checkUDP()
 {
-  pinmode(motorPin1,OUTPUT);
-  pinmode(motorPin2,OUTPUT);
-
-  Vel = 0;
-
-  set_P_Dir();
-}
-
-void InitStruct() 
-{
-  
-}
-
-struct checkUDP()
-{
-  a = getPort();
+  a = getPort(); //get message from port and format into struct later
 
   if(a.mode == m_reset) { pick_up = false;}
 
@@ -151,7 +170,7 @@ void checkIMU()
   int ay2 = ay;
   int az2 = az;
   
-  ax, ay, az = getIMU();
+  ax, ay, az, theta_x, theta_y, theta_z = getIMU();
 
   Jx = abs(ax - ax2);
 
@@ -168,7 +187,7 @@ void checkIMU()
 void AP()
 {
   WiFi.setPins(8,7,4,2);
-  //Initialize serial and wait for port to open:
+  //Initialize serial:
   Serial.begin(9600);
 
   // print the network name (SSID);
@@ -178,7 +197,11 @@ void AP()
   // Create open network. Change this line if you want to create an WEP network:
   status = WiFi.beginAP(ssid);
 
-  
+  while (status != WL_AP_LISTENING) {
+    Serial.println("Creating access point failed");
+    // don't continue
+  }
+ 
 }
 
 void OpenPort()
@@ -226,3 +249,30 @@ void multiply(double m[][4], double n[][4], double res[][4])
         } 
     } 
 } 
+
+int setSpeed(float S) {
+  if (S > 230.0) {
+    S = 255.0;
+  }
+  else if (S < 0.3*255.0) {
+    S = 0.3*255.0;    
+  }
+
+  int out = (int)(S);
+
+  return out;
+}
+
+void setDir(float theta, float S)
+{
+  if (theta_d > theta)
+  {
+    Ml = 0;
+    Mr = S;
+    
+  }
+  else {
+    Ml = S;
+    Mr = 0;
+  }
+}
