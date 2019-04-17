@@ -86,7 +86,7 @@ void loop() {
    theta_d = a.theta;
    vel_d = a.velos;
 
-  //proportional = proportionalControl(vel, vel_d); //add proportional control later
+  proportional = proportionalControl(vel, vel_d); //add proportional control later
   
   S = setSpeed(proportional);
 
@@ -275,4 +275,8 @@ void setDir(float theta, float S)
     Ml = S;
     Mr = 0;
   }
+}
+
+int proportionalControl(float vel, float vel_d){
+  return 1;
 }
