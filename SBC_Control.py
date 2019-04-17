@@ -1,7 +1,5 @@
 import socket
 
-global X
-
 def Send(Message): #send string through udp
 	UDP_IP = "127.0.0.1" #Replace with feather AP IP
 	UDP_PORT = 5005
@@ -18,14 +16,13 @@ def Send(Message): #send string through udp
 def Connect2Port(): #Connect to feather AP
 
 	return
-	
-def Init_Struct(X): #Initialize struct to send instructions
-	return
-	
+
 def parseInput(input): # get vel, theta, and mode from input
 	
 	
 def main():
+
+	Connect2Port()
     while 1:
 	
 		# get keyboard input, waits until enter pressed
