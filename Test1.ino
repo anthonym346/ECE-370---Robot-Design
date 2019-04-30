@@ -280,16 +280,6 @@ void loop() {
   delay(0.05);
 }
 
-void moveRobot()
-{
-  
-}
-
-void servoRobot()
-{
-  
-}
-
 void setMot()
 {
   int left;
