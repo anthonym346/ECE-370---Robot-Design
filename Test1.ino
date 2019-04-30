@@ -11,8 +11,8 @@ LSM303 compass;
 
 
 // Set wheel radius 'r' and base length 'L'
-#define r 2
-#define L 3
+#define r 20
+#define L 90
 
 //Robot Modes
 #define STOP      0
@@ -71,36 +71,24 @@ int led =  LED_BUILTIN;
 int status = WL_IDLE_STATUS;
 WiFiServer server(80);
 int baseZ = 0;
+
+
 void setup() {
 
-  pinMode(MotorL1,OUTPUT);
-//  pinMode(MotorL2,OUTPUT);
-  pinMode(MotorR1,OUTPUT);
-  pinMode(MotorR2,OUTPUT);
-//
-  digitalWrite(MotorL1,LOW);
-//  digitalWrite(MotorL2,LOW);
-  digitalWrite(MotorR1,LOW);
-  digitalWrite(MotorR2,LOW);
-  
   setupUDP();
-  
-  pinMode(MotorL1,OUTPUT);
-//  pinMode(MotorL2,OUTPUT);
-  pinMode(MotorR1,OUTPUT);
-  pinMode(MotorR2,OUTPUT);
-//
-  digitalWrite(MotorL1,LOW);
-//  digitalWrite(MotorL2,LOW);
-  digitalWrite(MotorR1,LOW);
-  digitalWrite(MotorR2,LOW);
 
-  Serial.println("start Wire");
+  MotorSetup();
+
+  OdomInit();
+
+  SetIR();
+
+//  Setup the IMU:
 
   Wire.begin();
-  Serial.println("compass init");
+//  Serial.println("compass init");
   compass.init();
-  Serial.println("enable");
+//  Serial.println("enable");
   compass.enableDefault();
 
   compass.m_min = (LSM303::vector<int16_t>){-4274,  -3279,  -1901};
@@ -109,6 +97,7 @@ void setup() {
   compass.read();
   baseZ = compass.a.z;
 }
+
 int counter = 1;
 int num = 0;
 void loop() {
@@ -432,4 +421,66 @@ void proportionalControl(float theta, float theta_d) {
 //  }
   
   
+}
+
+void SetIR()
+{
+  pinMode(IR1,INPUT_PULLUP);
+  pinMode(IR2,INPUT_PULLUP);
+
+  attachInterrupt(digitalPinToInterrupt(IR1),Right,RISING);
+  attachInterrupt(digitalPinToInterrupt(IR2),Left,RISING);
+}
+
+void MotorSetup()
+{
+    pinMode(MotorL1,OUTPUT);
+//  pinMode(MotorL2,OUTPUT);
+  pinMode(MotorR1,OUTPUT);
+  pinMode(MotorR2,OUTPUT);
+//
+  digitalWrite(MotorL1,LOW);
+//  digitalWrite(MotorL2,LOW);
+  digitalWrite(MotorR1,LOW);
+  digitalWrite(MotorR2,LOW);
+}
+
+
+void OdomInit()
+{
+   // To multiply distance Pt into right and left arrays
+  double tempR[][4] = {{1, 0, 0, Pt/2}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
+  double tempL[][4] = {{1, 0, 0, Pt/2}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
+
+  double tempTR[4][4];
+  
+  memcpy(tempTR,TR,sizeof(TR)); //copy of TR, since multiply value is stored in TR
+  
+  multiply(tempTR,tempR,TR);
+
+  double tempTL[4][4];
+  
+  memcpy(tempTL,TL,sizeof(TL)); //copy of TL, since multiply value is stored in TL
+
+  multiply(tempTL,tempL,TL);
+}
+
+//Odometry
+// isr when right wheel sensor detects encoder tick
+void Right() {
+
+  double tempTP[4][4];
+  
+  memcpy(tempTP,TP,sizeof(TP)); //copy of TP, since multiply value is stored in TP
+  
+  multiply(tempTP,TR,TP); //multiply matrices to get new position/angle
+}
+
+// isr when left wheel sensor detects encoder tick
+void Left() {
+  double tempTP[4][4];
+  
+  memcpy(tempTP,TP,sizeof(TP)); //copy of TP, since multiply value is stored in TP
+  
+  multiply(tempTP,TL,TP); //multiply matrices to get new position/angle
 }
