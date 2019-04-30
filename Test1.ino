@@ -72,6 +72,8 @@ int status = WL_IDLE_STATUS;
 WiFiServer server(80);
 int baseZ = 0;
 
+float FramePhi = 0.0;
+
 
 void setup() {
 
@@ -101,6 +103,7 @@ void setup() {
 int counter = 1;
 int num = 0;
 void loop() {
+  float phi = 0.0;
   int heading_d;
   int z = compass.a.z - baseZ;
   
@@ -208,8 +211,7 @@ void loop() {
         Ml = 255;
         Mr = 255;
         setMot();
-        //int x = TP[0][3];
-        //proportionalControl(
+        
       break;
 
       case TURN:
@@ -217,10 +219,28 @@ void loop() {
         {
           Serial.println("Mode = Turn");
           num = 1;
+          phi = atan2(TP[1][0],TP[0][0]);
+
+          FramePhi = phi;
         }
-        Ml = 255;
-        Mr = 0;
-//        proportionalControl(
+        
+        phi = atan2(TP[1][0],TP[0][0]);
+        
+        if(dir == 1)
+        {
+          MovementControl(90.0,phi-FramePhi);
+        }
+
+        if(dir == 2)
+        {
+          MovementControl(180.0,phi-FramePhi);
+        }
+
+        if(dir == 3)
+        {
+          MovementControl(270.0,phi-FramePhi);
+        }
+
         
         setMot();
       break;
@@ -359,12 +379,9 @@ void proportionalControl(float theta, float theta_d) {
   float kp = 1;
   float e = abs(theta_d - theta);
 
-  if(e > 360){e = 20;}
+  if(e > 360){e = 100;}
   
   float out = kp*e;
-//  Serial.println("Prop");
-
-  //Potentially give it buffer if it has trouble settling
   
   if(out > 50.0)
   {
@@ -382,9 +399,9 @@ void proportionalControl(float theta, float theta_d) {
 //  int y = TP[1][3];
 
 //  float phi = atan2(TP[1][0],TP[0][0]);
-//  Serial.println(e);
+
   char result[20];
-  sprintf(result, "%2.2f", heading);
+  sprintf(result, "Heading: %2.2f", heading);
   Udp.beginPacket(remoteIp, 5006);
   Udp.write(result);
   Udp.endPacket();
@@ -394,33 +411,52 @@ void proportionalControl(float theta, float theta_d) {
     Serial.print("Current Position : ");
     Serial.println(theta);
     Serial.print("Desired Position : ");
-    Serial.println(theta_d);
-
-    char result[20];
-    sprintf(result, "%2.2f", heading);
-    Udp.beginPacket(remoteIp, 5006);
-    Udp.write(result);
-    Udp.endPacket();
-    
+    Serial.println(theta_d);    
   }
   
-  //prop = prop + 0.5*(theta_d-theta+2);
   out = out*200;
   Mr = out;
   Ml = 0;
+ 
+}
 
-//  if(dir == 1)
-//  {
-//    Mr = out;
-//    Ml = 0;
-//  }
-//  else
-//  {
-//    Mr = 0;
-//    Ml = out;
-//  }
+void MovementControl(float theta, float theta_d)
+{
+  count = count + 1;
+
+  float kp = 1;
+  float e = abs(theta_d - theta);
+
+  if(e > 100){e = 100;}
   
+  float out = kp*e;
   
+  if(out > 50.0)
+  {
+    out = 50.0;
+  }
+  else if(out < 0.0)
+  {
+    out = 1.0;
+  }
+
+  out = out/50.0;
+
+  int x = TP[0][3];
+
+  int y = TP[1][3];
+
+  float phi = atan2(TP[1][0],TP[0][0]);
+
+  char result[20];
+  sprintf(result, "Position: (%d,%d,%d)", x,y,phi);
+  Udp.beginPacket(remoteIp, 5006);
+  Udp.write(result);
+  Udp.endPacket();
+
+  out = out*200;
+  Mr = out;
+  Ml = out;
 }
 
 void SetIR()
