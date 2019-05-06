@@ -531,26 +531,57 @@ void MovementControl(float theta, float theta_d)
 
   out = out * 25.5;
   
-  if (theta < theta_d)
+  if (theta < theta_d) //Turn Right
   {
-    Ml = out*(velSet+1);
-    Mr = out*velSet;
+    Mr = 25.5*velSet;
+    Ml = Mr;
+
+    if(velSet = 10) //right wheel one setpoint slower
+    {
+      Mr = Mr - out;
+    }
+    else
+    {
+      Ml = Ml + out;
+    }
+    
+    
   }
   else
   {
     if(abs(theta-theta_d) > 180)
     {
-      if(theta_d == 0)
+//      if(theta_d == 0)
+//      {
+//        out = 50;
+//      }
+      
+      Mr = 25.5*velSet;
+      Ml = Mr;
+  
+      if(velSet = 10) //right wheel one setpoint slower
       {
-        out = 50;
+        Mr = Mr - out;
       }
-      Ml = out*(velSet+1);
-      Mr = out*velSet;
+      else
+      {
+        Ml = Ml + out;
+      }
+  
     }
-    else
+    else //Turn left
     {
-      Mr = out*(velSet+1);
-      Ml = out*velSet;
+      Ml = 25.5*velSet;
+      Ml = Mr;
+
+      if(velSet = 10) //Left wheel one setpoint slower
+      {
+        Ml = Ml - out;
+      }
+      else
+      {
+        Mr = Mr + out;
+      }
     }
   }
 
