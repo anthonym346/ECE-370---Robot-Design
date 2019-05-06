@@ -239,6 +239,7 @@ void loop() {
         Serial.println("Mode = Stop");
         num = 1;
       }
+      velSet = 0;
       Ml = 0;
       Mr = 0;
       setMot();
@@ -248,42 +249,47 @@ void loop() {
       if (num == 0)
       {
         Serial.println("Mode = Move");
+
+        if((dir == 0) & (velSet < 10))
+        {
+          velSet = velSet + 1;
+        }
+        else if((dir == 2) & (velSet > 0))
+        {
+          velSet = velSet - 1;
+        }
+        
         num = 1;
       }
 
-      Ml = 255;
-      Mr = 255;
+      Ml = 25.5*velSet;
+      Mr = 25.5*velSet;
       setMot();
 
       break;
 
     case TURN:
+      float turnPhi;
       if (num == 0)
       {
         Serial.println("Mode = Turn");
         num = 1;
-        phi = atan2(TP[1][0], TP[0][0]) * 180 / PI;
-
-        FramePhi = phi;
+//        phi = atan2(TP[1][0], TP[0][0]) * 180 / PI;
+        turnPhi = phi;
       }
 
-      phi = atan2(TP[1][0], TP[0][0]) * 180 / PI;
+//      phi = atan2(TP[1][0], TP[0][0]) * 180 / PI;
 
       if (dir == 1)
       {
-        MovementControl(90.0, phi - FramePhi);
-      }
-
-      if (dir == 2)
-      {
-        MovementControl(180.0, phi - FramePhi);
+        MovementControl(phi, turnPhi+15);//////////////////////////////////////////////////////////////
       }
 
       if (dir == 3)
       {
-        MovementControl(270.0, phi - FramePhi);
+        MovementControl(phi, turnPhi-15);
       }
-
+ 
 
       setMot();
       break;
@@ -296,7 +302,6 @@ void loop() {
       }
 
       setMot();
-
       if(dir == 0)
       {
         proportionalControl(heading, 0);
@@ -307,21 +312,22 @@ void loop() {
       }
       else if(dir == 2)
       {
-        proportionalControl(heading, 180);
-      }
-      else
-      {
         proportionalControl(heading, 270);
       }
+      else if(dir == 3)
+      {
+        proportionalControl(heading, 180);
+      }
       
-//      proportionalControl(heading, heading_d);
-      //        if(Mr < 20){ mode = STOP;}
       break;
 
     case PICKED_UP:
       if (num < 2)
       {
         Serial.println("Mode = RESET");
+
+        velSet = 0;
+        
         char  Res[] = "Reset";
         Udp.beginPacket(remoteIp, 4242);
         Udp.write(Res);
@@ -345,20 +351,19 @@ void setMot()
 {
   int left;
   int right;
-  if (Ml > 50) {
-    left = 50;
+  if (Ml > 200) {
+    left = 200;
   }
   else {
     left = Ml;
   }
-  if (Mr > 50) {
-    right = 50;
+  if (Mr > 200) {
+    right = 200;
   }
   else {
     right = Mr;
   }
-  //  Serial.println(left);
-  //  Serial.println(right);
+
   analogWrite(MotorL1, left);
   analogWrite(MotorR1, right);
   
@@ -387,8 +392,8 @@ void setupUDP()
     // Connect to WPA/WPA2 network. Change this line if using open or WEP network:
     status = WiFi.begin(ssid, pass);
 
-    // wait 10 seconds for connection:
-    delay(10000);
+    // wait 2 seconds for connection:
+    delay(2000);
   }
   Serial.println("Connected to wifi");
   printWiFiStatus();
@@ -437,24 +442,13 @@ void proportionalControl(float theta, float theta_d) {
   count = count + 1;
 
   float kp = 1;
+
   float e = abs(abs(theta_d) - abs(theta));
 
-  if (e > 360) {
-    e = 100;
-  }
+  if(e > 180.0) {e = 360.0 - e;} //Max distance is 180 degrees away
 
   float out = kp * e;
-
-  if (out > 50.0)
-  {
-    out = 50.0;
-  }
-  else if (out < 0.0)
-  {
-    out = 1.0;
-  }
-
-  out = out / 50.0;
+  out = out / 180.0;
 
   //  int x = TP[0][3];
   //
@@ -466,9 +460,9 @@ void proportionalControl(float theta, float theta_d) {
 
   if (count % 250 == 0)
   {
-    Serial.print("Current Position : ");
+    Serial.print("Current Angle : ");
     Serial.println(theta);
-    Serial.print("Desired Position : ");
+    Serial.print("Desired Angle : ");
     Serial.println(theta_d);
 
     char result[20];
@@ -478,8 +472,8 @@ void proportionalControl(float theta, float theta_d) {
     Udp.endPacket();
   }
 
-  out = out * 200;
-
+  out = out * 200.0; //Limit max servo speed to reduce overshoot
+  
   if (theta < theta_d)
   {
     Ml = out;
@@ -487,12 +481,12 @@ void proportionalControl(float theta, float theta_d) {
   }
   else
   {
-    if(abs(theta-theta_d) > 180)
+    if(abs(theta-theta_d) > 180) //If over 180 degrees away, closer to turn other direction
     {
-      if(theta_d == 0)
-      {
-        out = 50;
-      }
+//      if(theta_d == 0)
+//      {
+//        out = 50;
+//      }
       Ml = out;
       Mr = 0;
     }
@@ -509,25 +503,15 @@ void MovementControl(float theta, float theta_d)
 {
   count = count + 1;
 
-  float kp = 1.5;
+  float kp = 1;
   float e = abs(theta_d - theta);
 
-  if (e > 100) {
-    e = 100;
+  if (e > 180.0) {
+    e = 360.0 - e;
   }
 
   float out = kp * e;
-
-  if (out > 50.0)
-  {
-    out = 50.0;
-  }
-  else if (out < 0.0)
-  {
-    out = 1.0;
-  }
-
-  out = out / 50.0;
+  out = out/180.0;
 
   if (count % 100 == 0)
   {
@@ -545,16 +529,29 @@ void MovementControl(float theta, float theta_d)
     Udp.endPacket();
   }
 
-  out = out * 200;
+  out = out * 25.5;
+  
   if (theta < theta_d)
   {
-    Ml = out;
-    Mr = 0;
+    Ml = out*(velSet+1);
+    Mr = out*velSet;
   }
   else
   {
-    Mr = out;
-    Ml = 0;
+    if(abs(theta-theta_d) > 180)
+    {
+      if(theta_d == 0)
+      {
+        out = 50;
+      }
+      Ml = out*(velSet+1);
+      Mr = out*velSet;
+    }
+    else
+    {
+      Mr = out*(velSet+1);
+      Ml = out*velSet;
+    }
   }
 
 }
