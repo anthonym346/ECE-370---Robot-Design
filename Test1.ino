@@ -21,6 +21,17 @@ LSM303 compass;
 #define SERVO     3
 #define PICKED_UP 4
 
+struct message {
+  double odo[3];
+  double imu[6];
+  double heading;
+}__attribute__((packed));
+
+struct Commands {
+  int Mode;
+  int dir;
+}__attribute__((packed));
+
 //Motor values
 int Ml = 0;
 int Mr = 0;
@@ -101,9 +112,6 @@ void setup() {
   OdomInit();
   Serial.println("Odometry Set Up");
 
-  SetIR();
-  Serial.println("Sensors Set Up");
-
   //  Setup the IMU:
 
   
@@ -114,11 +122,15 @@ void setup() {
 
   baseHeading = compass.heading((LSM303::vector<int>) {
     -1, 0, 0 }); //Use for turn 15 degrees if Odometry problem
+
+  SetIR();
+  Serial.println("Sensors Set Up");
 }
 
 int counter = 1;
 int num = 0;
 void loop() {
+  message sendThis;
   float phi;
   int heading_d;
   int z = compass.a.z - baseZ;
@@ -129,12 +141,12 @@ void loop() {
   //  {
   //    mode = PICKED_UP;
   //  }
-  //  Serial.print("Ax: ");
-  //  Serial.println(compass.a.x);
-  //  Serial.print("Ay: ");
-  //  Serial.println(compass.a.y);
-  //  Serial.print("Az: ");
-  //  Serial.println(compass.a.z);
+//    Serial.print("Ax: ");
+//    Serial.println(compass.a.x);
+//    Serial.print("Ay: ");
+//    Serial.println(compass.a.y);
+//    Serial.print("Az: ");
+//    Serial.println(compass.a.z);
 
   heading = compass.heading((LSM303::vector<int>) {
     -1, 0, 0 });
@@ -147,10 +159,41 @@ void loop() {
   { phi = 360 + phi;}
 
 
+  if(counter % 100 == 0)
+  {
 
-  //  Serial.println(heading);
-  char result[20];
-  sprintf(result, "%2.2f", heading);
+    //  Serial.println(heading);
+    char result[20];
+    sprintf(result, "%2.2f", heading);
+  
+    double x = TP[0][3];
+  
+    double y = TP[1][3];
+
+    Serial.print("X: ");
+    Serial.println(x);
+    Serial.print("Y: ");
+    Serial.println(y);
+  
+    sendThis.odo[0] = x;
+    sendThis.odo[1] = y;
+    sendThis.odo[2] = 0;
+  
+    sendThis.imu[0] = compass.a.x;
+    sendThis.imu[1] = compass.a.y;
+    sendThis.imu[2] = compass.a.z;
+    sendThis.imu[3] = compass.m.x;
+    sendThis.imu[4] = compass.m.y;
+    sendThis.imu[5] = compass.m.z;
+  
+    sendThis.heading = heading;
+  
+//  char result[20];
+//  sprintf(result, "Position: (%d,%d,%d)", x, y, 0);
+  Udp.beginPacket(remoteIp, 4242);
+  Udp.write((char*)&sendThis,sizeof(message));
+  Udp.endPacket();
+  }
 
   counter = counter + 1;
 
@@ -176,11 +219,24 @@ void loop() {
     // read the packet into packetBufffer
     int len = Udp.read(packetBuffer, 255);
     if (len > 0) packetBuffer[len] = 0;
-    Serial.println("Contents:");
-    Serial.println(packetBuffer);
+    
 
-    if (sscanf(packetBuffer, "%d,%d", &mode, &dir) == 2)
-    {
+    Commands *com = (Commands*) packetBuffer;
+
+    mode = com->Mode;
+    dir = com->dir;
+
+    Serial.print("Contents: ");
+    Serial.print("(");
+    Serial.print(mode);
+    Serial.print(",");
+    Serial.print(dir);
+    Serial.println(")");
+
+    
+
+//    if (sscanf(packetBuffer, "%d,%d", &mode, &dir) == 2)
+//    {
       // send a reply, to the IP address and port that sent us the packet we received
       Udp.beginPacket(remoteIp, 4242);
       Udp.write(ReplyBuffer);
@@ -200,36 +256,36 @@ void loop() {
           heading_d = 270;
           break;
       }
-    }
-    else
-    {
-      mode = 0;
-      // send a reply, to the IP address and port that sent us the packet we received
-      Udp.beginPacket(remoteIp, 4242);
-      Udp.write(BadReply);
-      Udp.endPacket();
-    }
+//    }
+//    else
+//    {
+//      mode = 0;
+//      // send a reply, to the IP address and port that sent us the packet we received
+//      Udp.beginPacket(remoteIp, 4242);
+//      Udp.write(BadReply);
+//      Udp.endPacket();
+//    }
 
     num = 0;
 
 
   }
 
-  if (counter % 1000 == 0)
-  {
-    int x = TP[0][3];
-
-    int y = TP[1][3];
-
-//    phi = atan2(TP[1][0], TP[0][0]);
-//    phi = int(phi);
-
-    char result[20];
-    sprintf(result, "Position: (%d,%d,%d)", x, y, phi);
-    Udp.beginPacket(remoteIp, 4242);
-    Udp.write(result);
-    Udp.endPacket();
-  }
+//  if (counter % 1000 == 0)
+//  {
+//    int x = TP[0][3];
+//
+//    int y = TP[1][3];
+//
+////    phi = atan2(TP[1][0], TP[0][0]);
+////    phi = int(phi);
+//
+//    char result[20];
+//    sprintf(result, "Position: (%d,%d,%d)", x, y, phi);
+//    Udp.beginPacket(remoteIp, 4242);
+//    Udp.write(result);
+//    Udp.endPacket();
+//  }
 
   //
   switch (mode) {
@@ -262,8 +318,8 @@ void loop() {
         num = 1;
       }
 
-      Ml = 25.5*velSet;
-      Mr = 25.5*velSet;
+      Ml = 20*velSet;
+      Mr = 20*velSet;
       setMot();
 
       break;
@@ -392,8 +448,8 @@ void setupUDP()
     // Connect to WPA/WPA2 network. Change this line if using open or WEP network:
     status = WiFi.begin(ssid, pass);
 
-    // wait 2 seconds for connection:
-    delay(2000);
+    // wait 0.5 seconds for connection:
+    delay(500);
   }
   Serial.println("Connected to wifi");
   printWiFiStatus();
@@ -441,11 +497,11 @@ void proportionalControl(float theta, float theta_d) {
 
   count = count + 1;
 
-  float kp = 1;
+  float kp = 1.2;
 
   float e = abs(abs(theta_d) - abs(theta));
 
-  if(e > 180.0) {e = 360.0 - e;} //Max distance is 180 degrees away
+  if(e > 175.0) {e = 360.0 - e;} //Max distance is 180 degrees away
 
   float out = kp * e;
   out = out / 180.0;
@@ -458,19 +514,19 @@ void proportionalControl(float theta, float theta_d) {
 
   
 
-  if (count % 250 == 0)
-  {
-    Serial.print("Current Angle : ");
-    Serial.println(theta);
-    Serial.print("Desired Angle : ");
-    Serial.println(theta_d);
-
-    char result[20];
-    sprintf(result, "Heading: %2.2f", heading);
-    Udp.beginPacket(remoteIp, 4242);
-    Udp.write(result);
-    Udp.endPacket();
-  }
+//  if (count % 250 == 0)
+//  {
+//    Serial.print("Current Angle : ");
+//    Serial.println(theta);
+//    Serial.print("Desired Angle : ");
+//    Serial.println(theta_d);
+//
+//    char result[20];
+//    sprintf(result, "Heading: %2.2f", heading);
+//    Udp.beginPacket(remoteIp, 4242);
+//    Udp.write(result);
+//    Udp.endPacket();
+//  }
 
   out = out * 200.0; //Limit max servo speed to reduce overshoot
   
@@ -506,37 +562,37 @@ void MovementControl(float theta, float theta_d)
   float kp = 1;
   float e = abs(theta_d - theta);
 
-  if (e > 180.0) {
+  if (e > 175.0) {
     e = 360.0 - e;
   }
 
   float out = kp * e;
   out = out/180.0;
 
-  if (count % 100 == 0)
-  {
-    int x = TP[0][3];
+//  if (count % 100 == 0)
+//  {
+//    int x = TP[0][3];
+//
+//    int y = TP[1][3];
+//
+//    float p = atan2(TP[1][0], TP[0][0]);
+//    p = int(p) % 360;
+//
+//    char result[20];
+//    sprintf(result, "Position: (%d,%d,%d)", x, y, p);
+//    Udp.beginPacket(remoteIp, 4242);
+//    Udp.write(result);
+//    Udp.endPacket();
+//  }
 
-    int y = TP[1][3];
-
-    float p = atan2(TP[1][0], TP[0][0]);
-    p = int(p) % 360;
-
-    char result[20];
-    sprintf(result, "Position: (%d,%d,%d)", x, y, p);
-    Udp.beginPacket(remoteIp, 4242);
-    Udp.write(result);
-    Udp.endPacket();
-  }
-
-  out = out * 25.5;
+  out = out * 20;
   
   if (theta < theta_d) //Turn Right
   {
-    Mr = 25.5*velSet;
+    Mr = 20*velSet;
     Ml = Mr;
 
-    if(velSet = 10) //right wheel one setpoint slower
+    if(velSet == 10) //right wheel one setpoint slower
     {
       Mr = Mr - out;
     }
@@ -556,10 +612,10 @@ void MovementControl(float theta, float theta_d)
 //        out = 50;
 //      }
       
-      Mr = 25.5*velSet;
+      Mr = 20*velSet;
       Ml = Mr;
   
-      if(velSet = 10) //right wheel one setpoint slower
+      if(velSet == 10) //right wheel one setpoint slower
       {
         Mr = Mr - out;
       }
@@ -571,10 +627,10 @@ void MovementControl(float theta, float theta_d)
     }
     else //Turn left
     {
-      Ml = 25.5*velSet;
+      Ml = 20*velSet;
       Ml = Mr;
 
-      if(velSet = 10) //Left wheel one setpoint slower
+      if(velSet == 10) //Left wheel one setpoint slower
       {
         Ml = Ml - out;
       }
