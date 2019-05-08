@@ -237,10 +237,10 @@ void loop() {
 
 //    if (sscanf(packetBuffer, "%d,%d", &mode, &dir) == 2)
 //    {
-      // send a reply, to the IP address and port that sent us the packet we received
-      Udp.beginPacket(remoteIp, 4242);
-      Udp.write(ReplyBuffer);
-      Udp.endPacket();
+//       //send a reply, to the IP address and port that sent us the packet we received
+//      Udp.beginPacket(remoteIp, 4242);
+//      Udp.write(ReplyBuffer);
+//      Udp.endPacket();
 
       switch (dir) {
         case 0:
@@ -368,11 +368,11 @@ void loop() {
       }
       else if(dir == 2)
       {
-        proportionalControl(heading, 270);
+        proportionalControl(heading, 180);
       }
       else if(dir == 3)
       {
-        proportionalControl(heading, 180);
+        proportionalControl(heading, 270);
       }
       
       break;
@@ -497,7 +497,7 @@ void proportionalControl(float theta, float theta_d) {
 
   count = count + 1;
 
-  float kp = 1.2;
+  float kp = 2;
 
   float e = abs(abs(theta_d) - abs(theta));
 
@@ -528,7 +528,7 @@ void proportionalControl(float theta, float theta_d) {
 //    Udp.endPacket();
 //  }
 
-  out = out * 200.0; //Limit max servo speed to reduce overshoot
+  out = out * 200.0 + 25; //Limit max servo speed to reduce overshoot
   
   if (theta < theta_d)
   {
