@@ -36,12 +36,23 @@ struct Commands {
 int Ml = 0;
 int Mr = 0;
 
+int motorSpeedL = 0;
+int motorSpeedR = 0;
+
 int count = 0;
 
 int mode = 0;
 int dir = 0;
 
 int velSet = 0;
+
+int timesL[] = {0,0,0,0,0,0,0,0,0,0,0,0};
+int timesIndexL = 0;
+int firstTimeL = 0;
+
+int timesR[] = {0,0,0,0,0,0,0,0,0,0,0,0};
+int timesIndexR = 0;
+int firstTimeR = 0;
 
 IPAddress remoteIp;
 
@@ -132,19 +143,22 @@ int num = 0;
 void loop() {
   message sendThis;
   float phi;
+  float turnPhi;
   int heading_d;
   int z = compass.a.z - baseZ;
 
   compass.read();
 
-  //  if(abs(z) > 7000)
-  //  {
-  //    mode = PICKED_UP;
-  //  }
-//    Serial.print("Ax: ");
-//    Serial.println(compass.a.x);
-//    Serial.print("Ay: ");
-//    Serial.println(compass.a.y);
+    if(abs(z) > 7000)
+    {
+      mode = PICKED_UP;
+    }
+
+//    Serial.print("Az: ");
+//    Serial.println(compass.a.z);
+//    Serial.print("Initial Z: ");
+//    Serial.println(baseZ);
+//    if(mode == PICKED_UP){Serial.println("Reset");}
 //    Serial.print("Az: ");
 //    Serial.println(compass.a.z);
 
@@ -170,10 +184,10 @@ void loop() {
   
     double y = TP[1][3];
 
-    Serial.print("X: ");
-    Serial.println(x);
-    Serial.print("Y: ");
-    Serial.println(y);
+//    Serial.print("X: ");
+//    Serial.println(x);
+//    Serial.print("Y: ");
+//    Serial.println(y);
   
     sendThis.odo[0] = x;
     sendThis.odo[1] = y;
@@ -233,66 +247,30 @@ void loop() {
     Serial.print(dir);
     Serial.println(")");
 
-    
-
-//    if (sscanf(packetBuffer, "%d,%d", &mode, &dir) == 2)
-//    {
-//       //send a reply, to the IP address and port that sent us the packet we received
-//      Udp.beginPacket(remoteIp, 4242);
-//      Udp.write(ReplyBuffer);
-//      Udp.endPacket();
-
-      switch (dir) {
-        case 0:
-          heading_d = 360;
-          break;
-        case 1:
-          heading_d = 90;
-          break;
-        case 2:
-          heading_d = 180;
-          break;
-        case 3:
-          heading_d = 270;
-          break;
+    switch (dir) {
+      case 0:
+        heading_d = 360;
+        break;
+      case 1:
+        heading_d = 90;
+        break;
+      case 2:
+        heading_d = 180;
+        break;
+      case 3:
+        heading_d = 270;
+        break;
       }
-//    }
-//    else
-//    {
-//      mode = 0;
-//      // send a reply, to the IP address and port that sent us the packet we received
-//      Udp.beginPacket(remoteIp, 4242);
-//      Udp.write(BadReply);
-//      Udp.endPacket();
-//    }
 
     num = 0;
-
-
   }
 
-//  if (counter % 1000 == 0)
-//  {
-//    int x = TP[0][3];
-//
-//    int y = TP[1][3];
-//
-////    phi = atan2(TP[1][0], TP[0][0]);
-////    phi = int(phi);
-//
-//    char result[20];
-//    sprintf(result, "Position: (%d,%d,%d)", x, y, phi);
-//    Udp.beginPacket(remoteIp, 4242);
-//    Udp.write(result);
-//    Udp.endPacket();
-//  }
-
-  //
   switch (mode) {
     case STOP:
       if (num == 0)
       {
         Serial.println("Mode = Stop");
+        baseZ = compass.a.z;
         num = 1;
       }
       velSet = 0;
@@ -318,36 +296,37 @@ void loop() {
         num = 1;
       }
 
-      Ml = 20*velSet;
-      Mr = 20*velSet;
+      speedControl(motorSpeedL, 100*velSet);
+      speedControl(motorSpeedR, 100*velSet);
+      
       setMot();
-
       break;
 
     case TURN:
-      float turnPhi;
+      
       if (num == 0)
       {
         Serial.println("Mode = Turn");
         num = 1;
-//        phi = atan2(TP[1][0], TP[0][0]) * 180 / PI;
-        turnPhi = phi;
+        turnPhi = heading;
+
       }
 
-//      phi = atan2(TP[1][0], TP[0][0]) * 180 / PI;
+
+      Serial.println(turnPhi);
 
       if (dir == 1)
       {
-        MovementControl(phi, turnPhi+15);//////////////////////////////////////////////////////////////
+        MovementControl(heading, turnPhi+15);
       }
 
       if (dir == 3)
       {
-        MovementControl(phi, turnPhi-15);
+        MovementControl(heading, turnPhi-15);
       }
- 
-
+      
       setMot();
+
       break;
 
     case SERVO:
@@ -357,7 +336,6 @@ void loop() {
         num = 1;
       }
 
-      setMot();
       if(dir == 0)
       {
         proportionalControl(heading, 0);
@@ -374,6 +352,8 @@ void loop() {
       {
         proportionalControl(heading, 270);
       }
+
+      setMot();
       
       break;
 
@@ -384,10 +364,10 @@ void loop() {
 
         velSet = 0;
         
-        char  Res[] = "Reset";
-        Udp.beginPacket(remoteIp, 4242);
-        Udp.write(Res);
-        Udp.endPacket();
+//        char  Res[] = "Reset";
+//        Udp.beginPacket(remoteIp, 4242);
+//        Udp.write(Res);
+//        Udp.endPacket();
         num = 2;
       }
       Mr = 0;
@@ -407,18 +387,21 @@ void setMot()
 {
   int left;
   int right;
-  if (Ml > 200) {
-    left = 200;
+  if (Ml > 150) {
+    left = 150;
   }
   else {
     left = Ml;
   }
-  if (Mr > 200) {
-    right = 200;
+  if (Mr > 150) {
+    right = 150;
   }
   else {
     right = Mr;
   }
+
+  if(left < 0){left = 0;}
+  if(right<0){right=0;}
 
   analogWrite(MotorL1, left);
   analogWrite(MotorR1, right);
@@ -559,46 +542,35 @@ void MovementControl(float theta, float theta_d)
 {
   count = count + 1;
 
-  float kp = 1;
+  if(theta_d > 360){theta_d=theta_d-360;}
+  if(theta_d < 0){theta_d = theta_d + 360;}
+
+  Serial.println(theta);
+  Serial.println(theta_d);
+
+  float kp = 0.5;
   float e = abs(theta_d - theta);
 
   if (e > 175.0) {
     e = 360.0 - e;
   }
+//  Serial.println(e);
 
   float out = kp * e;
-  out = out/180.0;
-
-//  if (count % 100 == 0)
-//  {
-//    int x = TP[0][3];
-//
-//    int y = TP[1][3];
-//
-//    float p = atan2(TP[1][0], TP[0][0]);
-//    p = int(p) % 360;
-//
-//    char result[20];
-//    sprintf(result, "Position: (%d,%d,%d)", x, y, p);
-//    Udp.beginPacket(remoteIp, 4242);
-//    Udp.write(result);
-//    Udp.endPacket();
-//  }
-
-  out = out * 20;
+  
   
   if (theta < theta_d) //Turn Right
   {
-    Mr = 20*velSet;
-    Ml = Mr;
 
-    if(velSet == 10) //right wheel one setpoint slower
+    if(velSet >= 9) //right wheel slower
     {
-      Mr = Mr - out;
+      speedControl(motorSpeedL, 100*velSet);
+      speedControl(motorSpeedR, 100*velSet - out*velSet);
     }
     else
     {
-      Ml = Ml + out;
+      speedControl(motorSpeedL, 100*velSet + out*velSet);
+      speedControl(motorSpeedR, 100*velSet);
     }
     
     
@@ -607,39 +579,46 @@ void MovementControl(float theta, float theta_d)
   {
     if(abs(theta-theta_d) > 180)
     {
-//      if(theta_d == 0)
-//      {
-//        out = 50;
-//      }
-      
-      Mr = 20*velSet;
-      Ml = Mr;
-  
-      if(velSet == 10) //right wheel one setpoint slower
+
+      if(velSet >= 9) //right wheel slower
       {
-        Mr = Mr - out;
+        speedControl(motorSpeedL, 100*velSet);
+        speedControl(motorSpeedR, 100*velSet - out*velSet);
       }
       else
       {
-        Ml = Ml + out;
+        speedControl(motorSpeedL, 100*velSet+out*velSet);
+        speedControl(motorSpeedR, 100*velSet);
       }
   
     }
     else //Turn left
     {
-      Ml = 20*velSet;
-      Ml = Mr;
-
-      if(velSet == 10) //Left wheel one setpoint slower
+      if(velSet >= 9) //Left wheel slower
       {
-        Ml = Ml - out;
+        speedControl(motorSpeedL, 100*velSet - out*velSet);
+        speedControl(motorSpeedR, 100*velSet);
       }
       else
       {
-        Mr = Mr + out;
+        speedControl(motorSpeedL, 100*velSet);
+        speedControl(motorSpeedR, 100*velSet + out*velSet);
       }
     }
   }
+
+}
+
+void speedControl(float s, float s_d)
+{
+  float kp = 0.1;
+  float e = s_d - s;
+
+  float out = kp*e;
+
+  Ml = Ml + out;
+
+  Mr = Mr + out;
 
 }
 
@@ -689,6 +668,42 @@ void OdomInit()
 // isr when right wheel sensor detects encoder tick
 void Right() {
 
+  int lastTime = micros();
+  timesR[timesIndexR] = lastTime - firstTimeR;
+
+  if(timesIndexR < 12) 
+  {
+    timesIndexR += 1;
+  }
+  else
+  {
+    timesIndexR = 0;
+  }
+
+  firstTimeL = lastTime;
+
+  int tickTime = 0;
+  int i = 0;
+  int counter = 0;
+  while(i < 12) {
+    if(timesR[i] > 0) {
+      tickTime = tickTime + timesR[i];
+      counter++;
+    }
+    i++;
+  }
+  
+  if(counter > 0) 
+  {
+    tickTime = tickTime/counter;
+  }
+  else
+  {
+    tickTime = 0;
+  }
+
+  motorSpeedR = 1000*1000*0.8/(tickTime);
+
   double tempTP[4][4];
 
   memcpy(tempTP, TP, sizeof(TP)); //copy of TP, since multiply value is stored in TP
@@ -698,6 +713,43 @@ void Right() {
 
 // isr when left wheel sensor detects encoder tick
 void Left() {
+
+  int lastTime = micros();
+  timesL[timesIndexL] = lastTime - firstTimeL;
+
+  if(timesIndexL < 12) 
+  {
+    timesIndexL += 1;
+  }
+  else
+  {
+    timesIndexL = 0;
+  }
+
+  firstTimeL = lastTime;
+
+  int tickTime = 0;
+  int i = 0;
+  int counter = 0;
+  while(i < 12) {
+    if(timesL[i] > 0) {
+      tickTime = tickTime + timesL[i];
+      counter++;
+    }
+    i++;
+  }
+  
+  if(counter > 0) 
+  {
+    tickTime = tickTime/counter;
+  }
+  else
+  {
+    tickTime = 0;
+  }
+
+  motorSpeedL = 1000*1000*0.8/(tickTime);
+  
   double tempTP[4][4];
 
   memcpy(tempTP, TP, sizeof(TP)); //copy of TP, since multiply value is stored in TP
